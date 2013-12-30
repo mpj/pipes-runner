@@ -99,7 +99,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
 function runWorld(module, world) {
   return sendUntilDone(module, world.expectations, 'start', true).then(function(timeline) {
     return {
-      world: { label: world.label },
+      world: { name: world.name },
       events: timeline
     }
   })
@@ -122,14 +122,19 @@ function pushOnPropertyArray(propertyName, obj) {
   return this
 }
 
+var World = {
+  expectation: partial(pushOnPropertyArray, 'expectations'),
+}
+
 var Module = {
   world:     partial(pushOnPropertyArray, 'worlds'),
   transform: partial(pushOnPropertyArray, 'transforms'),
   route:     partial(pushOnPropertyArray, 'routes')
 }
 
-
 module.exports = {
   run: runModule,
-  module: function() { return Object.create(Module) }
+  module: function() { return Object.create(Module) },
+  world: function(name) {
+    return Object.create(World, { name: { value: name }}) }
 }

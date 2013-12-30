@@ -4,18 +4,25 @@ var Q = require('q')
 chai.should()
 
 // Mark I
-// TODO: Module names
-// TODO: Fluent syntax on worlds
+
 // TODO: Support deepEquals for arrays
 // TODO: Support combining routes
 // TODO: Implement foreigners
 // TODO: Expectations should be a able to send
 
-
-
 // Mark II+
 // TODO: Submodules
 // TODO: Run single world
+
+// Maybe / Ideas
+// Module names
+// Not happy with world syntax - perhaps they should
+// be more separate from the module in this context?
+// They are testing the module from the outside, so they
+// don't really need to be part of the module, they just
+// need to be stored alongside. Like a module comes with
+// docs, it comes with a world. A game is a package,
+// manual and a dvd.
 
 var pipes = require('./pipes')
 
@@ -34,19 +41,19 @@ var addingModule = pipes.module()
   })
 
 
+
+
 pipes.run(Object.create(addingModule)
-  .world({
-    label: 'Playground',
-    expectations: [{
+  .world(pipes.world('Playground')
+    .expectation({
       channel: 'add_success',
       message: {
         result: 12
       }
-    }]
-  })
-).then(function(result) {
+    })
+)).then(function(result) {
   var timeline = result.timelines[0]
-  timeline.world.label.should.equal('Playground')
+  timeline.world.name.should.equal('Playground')
   var e = timeline.events
 
   e[0].received.channel.should.equal('start')
@@ -77,21 +84,20 @@ pipes.run(Object.create(addingModule)
 })
 
 pipes.run(Object.create(addingModule)
-  .world({
-    label: 'Test failure',
-    expectations: [{
+  .world(pipes.world('Test failure')
+    .expectation({
       channel: 'add_success',
       message: {
         result: 13 // <- not 12!
       }
-    }]
-  })
+    })
+  )
 ).then(function(result) {
   var timeline = result.timelines[0]
   var e = timeline.events
-  timeline.world.label.should.equal('Test failure')
+  timeline.world.name.should.equal('Test failure')
 
-  console.log(JSON.stringify(result,null,2))
+  //console.log(JSON.stringify(result,null,2))
   e[2].expectation.message.result.should.equal(13)
   e[2].expectation.match.should.equal(false)
 
@@ -100,7 +106,7 @@ pipes.run(Object.create(addingModule)
 })
 
 // TODO: Support for multiple expectations on one channel
-
+// TODO: Have one fail
 pipes.run(pipes.module()
   .route({
     channel: 'start',
@@ -121,26 +127,25 @@ pipes.run(pipes.module()
       result: work.message.a + work.message.b
     })
   })
-  .world({
-    label: 'Dual expectations',
-    expectations: [
-    {
+  .world(pipes.world('Dual expectations')
+    .expectation({
       channel: 'add_success',
       message: {
         result: 12
       }
-    },{
+    })
+    .expectation({
       channel: 'add_success',
       message: {
         result: 13
       }
-    }]
-  })
+    })
+  )
 ).then(function(result) {
   //console.log(JSON.stringify(result,null,2))
   var timeline = result.timelines[0]
   var e = timeline.events
-  timeline.world.label.should.equal('Dual expectations')
+  timeline.world.name.should.equal('Dual expectations')
 
   e[2].received.message.result.should.equal(12)
 
