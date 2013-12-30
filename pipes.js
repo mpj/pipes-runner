@@ -50,7 +50,21 @@ function sendUntilDone(module, expectations, channel, message, events) {
     // explicitly by routes
     var routesOnChannel = filter(module.routes, { channel: channel })
     routesOnChannel.forEach(function(route) {
-      receivers.push(findTransformByName(module, route.transform))
+      var transform = findTransformByName(module, route.transform)
+      if (!transform) {
+        events.push({
+          received: {
+            channel: channel,
+            message: message
+          },
+          transform: {
+            name: route.transform,
+            notFound: true
+          }
+        })
+      } else {
+        receivers.push(transform)
+      }
     })
 
     var sendPromises = []
@@ -70,7 +84,9 @@ function sendUntilDone(module, expectations, channel, message, events) {
               channel: channel,
               message: message
             },
-            transform: transform.name,
+            transform: {
+              name: transform.name
+            },
             sent: {
               channel: sendChannel,
               message: sendMessage

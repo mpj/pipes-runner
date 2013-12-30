@@ -5,10 +5,7 @@ chai.should()
 var expect = chai.expect
 // Mark I
 
-// TODO: One expectation succeeds, but one is never called
-// TODO: Two expectations are never called
-// TODO: Nicer error when route defines a nonexistant transform
-// TODO: Support deepEquals for arrays
+// TODO: Support deepEquals for arrays (deepMatch instead?)
 // TODO: Support combining routes
 // TODO: Implement foreigners
 // TODO: Expectations should be a able to send
@@ -63,7 +60,7 @@ pipes.run(Object.create(addingModule)
 
   e[0].received.channel.should.equal('start')
   e[0].received.message.should.equal(true)
-  e[0].transform.should.equal('add_five_and_seven')
+  e[0].transform.name.should.equal('add_five_and_seven')
   e[0].sent.channel.should.equal('add')
   e[0].sent.message.a.should.equal(5)
   e[0].sent.message.b.should.equal(7)
@@ -74,7 +71,7 @@ pipes.run(Object.create(addingModule)
   e[1].received.channel.should.equal('add')
   e[1].received.message.a.should.equal(5)
   e[1].received.message.b.should.equal(7)
-  e[1].transform.should.equal('add')
+  e[1].transform.name.should.equal('add')
   e[1].sent.channel.should.equal('add_success')
   e[1].sent.message.result.should.equal(12)
 
@@ -238,6 +235,23 @@ pipes.run(pipes.module()
   result.timelines[0].unmet[0].channel.should.equal('long_running_success')
 })
 .done(function() {
+  console.log("All is well.")
+})
+
+
+pipes.run(pipes.module()
+  .route({
+    channel: 'start',
+    transform: 'this_transform_does_not_exist'
+  })
+  .world(pipes.world('Empty world'))
+).then(function(result) {
+  var firstEvent = result.timelines[0].events[0]
+  firstEvent.received.channel.should.equal('start')
+  firstEvent.transform.name.should.equal('this_transform_does_not_exist')
+  firstEvent.transform.notFound.should.equal.true
+
+}).done(function() {
   console.log("All is well.")
 })
 
