@@ -3,18 +3,18 @@ chai.Assertion.includeStack = true;
 var Q = require('q')
 chai.should()
 var expect = chai.expect
-// Mark I
 
+// Mark I
 // TODO: Support deepEquals for arrays (deepMatch instead?)
 // TODO: Support combining routes
 // TODO: Implement foreigners
-// TODO: Expectations should be a able to send
 
 // Mark II+
 // TODO: Submodules
 // TODO: Run single world
 
 // Maybe / Ideas
+// TODO: refactor to simple json structure instead
 // TODO: Mark as unrouted
 // Module names
 // Not happy with world syntax - perhaps they should
@@ -29,6 +29,14 @@ var expect = chai.expect
 var pipes = require('./pipes')
 
 var addingModule = pipes.module()
+  .transform(function add(work) {
+    work.done('add_success', {
+      result: work.message.a + work.message.b
+    })
+  })
+
+pipes.run(
+  Object.create(addingModule)
   .route({
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -36,16 +44,6 @@ var addingModule = pipes.module()
   .transform(function add_five_and_seven(work) {
     work.done('add', { a: 5, b: 7 })
   })
-  .transform(function add(work) {
-    work.done('add_success', {
-      result: work.message.a + work.message.b
-    })
-  })
-
-
-
-
-pipes.run(Object.create(addingModule)
   .world(pipes.world('Playground')
     .expectation({
       channel: 'add_success',
@@ -85,6 +83,10 @@ pipes.run(Object.create(addingModule)
 })
 
 pipes.run(Object.create(addingModule)
+  .route({
+    channel: 'start',
+    transform: 'add_five_and_seven'
+  })
   .world(pipes.world('Test failure')
     .expectation({
       channel: 'add_success',
@@ -106,7 +108,7 @@ pipes.run(Object.create(addingModule)
 })
 
 
-pipes.run(pipes.module()
+pipes.run(Object.create(addingModule)
   .route({
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -120,11 +122,6 @@ pipes.run(pipes.module()
   })
   .transform(function add_five_and_eight(work) {
     work.done('add', { a: 5, b: 8 })
-  })
-  .transform(function add(work) {
-    work.done('add_success', {
-      result: work.message.a + work.message.b
-    })
   })
   .world(pipes.world('Dual expectations')
     .expectation({
@@ -155,7 +152,7 @@ pipes.run(pipes.module()
 
 
 
-pipes.run(pipes.module()
+pipes.run(Object.create(addingModule)
   .route({
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -169,11 +166,6 @@ pipes.run(pipes.module()
   })
   .transform(function add_five_and_nine(work) {
     work.done('add', { a: 5, b: 9 })
-  })
-  .transform(function add(work) {
-    work.done('add_success', {
-      result: work.message.a + work.message.b
-    })
   })
   .world(pipes.world('Dual expectations')
     .expectation({
@@ -254,5 +246,35 @@ pipes.run(pipes.module()
 }).done(function() {
   console.log("All is well.")
 })
+
+pipes.run(pipes.module()
+  .world(pipes.world('Empty world')
+    .expectation({
+      channel: 'start',
+      message: true,
+      send: {
+        channel: 'test_channel',
+        message: 'test_message'
+      }
+    })
+    .expectation({
+      channel: 'test_channel',
+      message: 'test_message'
+    })
+  )
+).then(function(result) {
+  var events = result.timelines[0].events
+  events[0].expectation.channel.should.equal('start')
+  events[0].expectation.message.should.equal(true)
+  events[0].sent.channel.should.equal('test_channel')
+  events[0].sent.message.should.equal('test_message')
+  events[1].received.channel.should.equal('test_channel')
+  events[1].received.message.should.equal('test_message')
+  events[1].expectation.channel.should.equal('test_channel')
+  events[1].expectation.message.should.equal('test_message')
+}).done(function() {
+  console.log("All is well here.")
+})
+
 
 // TODO: One expectation succeeds, but one fails (wrong message)

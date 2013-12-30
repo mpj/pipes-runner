@@ -31,11 +31,20 @@ function sendUntilDone(module, expectations, channel, message, events) {
           channel: channel,
           message: message
         },
-        expectation: match
+        expectation: match,
+        sent: match.send
       })
+      if(match.send) {
+        sendUntilDone(module, expectations, match.send.channel, match.send.message, events)
+          .then(deferred.resolve)
+      } else {
+        deferred.resolve(events)
+      }
+    } else {
+      deferred.resolve(events)
     }
 
-    deferred.resolve(events)
+
   } else {
 
     var receivers = [];
