@@ -58,9 +58,13 @@ function sendUntilDone(module, expectations, channel, message, events) {
 
       var deferredSend = Q.defer()
       sendPromises.push(deferredSend.promise)
+      var timeoutHandle;
+      var timedOut = false
       var work = {
         message: message,
         done: function(sendChannel, sendMessage) {
+          if(timedOut) return;
+          clearTimeout(timeoutHandle)
           events.push({
             received: {
               channel: channel,
@@ -76,6 +80,17 @@ function sendUntilDone(module, expectations, channel, message, events) {
             .then(deferredSend.resolve)
         }
       }
+      timeoutHandle = setTimeout(function() {
+        timedOut = true
+        events.push({
+          received: {
+            channel: channel,
+            message: message
+          },
+          transform: transform.name,
+          timedOut: true
+        })
+      }, 2000)
       transform(work)
     })
     return Q.all(sendPromises).then(function() { return events })

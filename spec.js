@@ -2,7 +2,7 @@ var chai = require('chai')
 chai.Assertion.includeStack = true;
 var Q = require('q')
 chai.should()
-
+var expect = chai.expect
 // Mark I
 
 // TODO: One expectation succeeds, but one is never called
@@ -203,6 +203,41 @@ pipes.run(pipes.module()
   timeline.unmet[0].message.result.should.equal(13)
 
 }).done(function() {
+  console.log("All is well.")
+})
+
+// Takes too long to execute
+pipes.run(pipes.module()
+  .route({
+    channel: 'start',
+    transform: 'long_running'
+  })
+  .transform(function long_running(work) {
+    setTimeout(function() {
+      work.done('long_running_success', true)
+    }, 2010)
+  })
+  .world(pipes.world('Handles timeouts')
+    .expectation({
+      channel: 'long_running_success',
+      message: true
+    })
+  )
+).then(function(result) {
+  console.log(JSON.stringify(result,null,2))
+  var e = result.timelines[0].events
+  e[0].received.channel.should.equal('start')
+  e[0].transform.should.equal('long_running')
+  expect(e[0].sent).to.be.undefined
+  e[0].timedOut.should.be.true
+  return result
+})
+.delay(10)
+.then(function(result) {
+  result.timelines[0].events.length.should.equal(1)
+  result.timelines[0].unmet[0].channel.should.equal('long_running_success')
+})
+.done(function() {
   console.log("All is well.")
 })
 
