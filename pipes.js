@@ -1,6 +1,8 @@
 var Q = require('q')
 var find = require('mout/array/find')
 var filter = require('mout/array/filter')
+var reject = require('mout/array/reject')
+var pluck = require('mout/array/pluck')
 var partial = require('mout/function/partial')
 var deepEquals = require('mout/object/deepEquals')
 
@@ -29,21 +31,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
           channel: channel,
           message: message
         },
-        expectation: {
-          message: match.message,
-          match: true
-        }
-      })
-    } else {
-      events.push({
-        received: {
-          channel: channel,
-          message: message
-        },
-        expectation: {
-          message: expectationsOnChannel[0].message, // TODO: multipe
-          match: false
-        }
+        expectation: match
       })
     }
 
@@ -97,10 +85,23 @@ function sendUntilDone(module, expectations, channel, message, events) {
 }
 
 function runWorld(module, world) {
-  return sendUntilDone(module, world.expectations, 'start', true).then(function(timeline) {
+  return sendUntilDone(module, world.expectations, 'start', true).then(function(events) {
+
+    var metExpectations = []
+    pluck(events, 'expectation').forEach(function(expectation) {
+      if (expectation) metExpectations.push(expectation)
+    })
+    var unmetExpectations =
+      reject(world.expectations, function(expectation) {
+        return !!find(metExpectations, function(met){
+          return deepEquals(met, expectation)
+        })
+      })
+
     return {
       world: { name: world.name },
-      events: timeline
+      events: events,
+      unmet: unmetExpectations
     }
   })
 }

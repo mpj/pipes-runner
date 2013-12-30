@@ -5,6 +5,9 @@ chai.should()
 
 // Mark I
 
+// TODO: One expectation succeeds, but one is never called
+// TODO: Two expectations are never called
+// TODO: Nicer error when route defines a nonexistant transform
 // TODO: Support deepEquals for arrays
 // TODO: Support combining routes
 // TODO: Implement foreigners
@@ -15,6 +18,7 @@ chai.should()
 // TODO: Run single world
 
 // Maybe / Ideas
+// TODO: Mark as unrouted
 // Module names
 // Not happy with world syntax - perhaps they should
 // be more separate from the module in this context?
@@ -23,6 +27,7 @@ chai.should()
 // need to be stored alongside. Like a module comes with
 // docs, it comes with a world. A game is a package,
 // manual and a dvd.
+// TODO: Simulate time automatically
 
 var pipes = require('./pipes')
 
@@ -77,7 +82,6 @@ pipes.run(Object.create(addingModule)
   e[2].received.channel.should.equal('add_success')
   e[2].received.message.result.should.equal(12)
   e[2].expectation.message.result.should.equal(12)
-  e[2].expectation.match.should.equal(true)
 
 }).done(function() {
   console.log("All is well")
@@ -98,15 +102,13 @@ pipes.run(Object.create(addingModule)
   timeline.world.name.should.equal('Test failure')
 
   //console.log(JSON.stringify(result,null,2))
-  e[2].expectation.message.result.should.equal(13)
-  e[2].expectation.match.should.equal(false)
+  timeline.unmet[0].message.result.should.equal(13)
 
 }).done(function() {
   console.log("All is well.")
 })
 
-// TODO: Support for multiple expectations on one channel
-// TODO: Have one fail
+
 pipes.run(pipes.module()
   .route({
     channel: 'start',
@@ -148,12 +150,60 @@ pipes.run(pipes.module()
   timeline.world.name.should.equal('Dual expectations')
 
   e[2].received.message.result.should.equal(12)
-
-  e[2].expectation.match.should.equal(true)
-
   e[5].received.message.result.should.equal(13)
-  e[5].expectation.match.should.equal(true)
 
 }).done(function() {
   console.log("All is well.")
 })
+
+
+
+pipes.run(pipes.module()
+  .route({
+    channel: 'start',
+    transform: 'add_five_and_seven'
+  })
+  .route({
+    channel: 'start',
+    transform: 'add_five_and_nine'
+  })
+  .transform(function add_five_and_seven(work) {
+    work.done('add', { a: 5, b: 7 })
+  })
+  .transform(function add_five_and_nine(work) {
+    work.done('add', { a: 5, b: 9 })
+  })
+  .transform(function add(work) {
+    work.done('add_success', {
+      result: work.message.a + work.message.b
+    })
+  })
+  .world(pipes.world('Dual expectations')
+    .expectation({
+      channel: 'add_success',
+      message: {
+        result: 12
+      }
+    })
+    .expectation({
+      channel: 'add_success',
+      message: {
+        result: 13
+      }
+    })
+  )
+).then(function(result) {
+  //console.log(JSON.stringify(result,null,2))
+  var timeline = result.timelines[0]
+  var e = timeline.events
+  timeline.world.name.should.equal('Dual expectations')
+
+  timeline.unmet.length.should.equal(1)
+  timeline.unmet[0].channel.should.equal('add_success')
+  timeline.unmet[0].message.result.should.equal(13)
+
+}).done(function() {
+  console.log("All is well.")
+})
+
+// TODO: One expectation succeeds, but one fails (wrong message)
