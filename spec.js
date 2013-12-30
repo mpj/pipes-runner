@@ -3,69 +3,48 @@ chai.Assertion.includeStack = true;
 var Q = require('q')
 chai.should()
 
-
-// TODO: Support for multiple expectations on one channel
+// Mark I
+// TODO: Module names
+// TODO: Fluent syntax on worlds
 // TODO: Support deepEquals for arrays
 // TODO: Support combining routes
 // TODO: Implement foreigners
-
-var Runner = require('./runner.js')
-
-var runner = Object.create(Runner)
-
-var World = {
-  expectations: [],
-  expectation: function(e) { this.expectations.push(e); return this }
-}
-
-var Module = {
-  routes: [],
-  transforms: [],
-  worlds: [],
-  world:     function(w) { this.worlds    .push(w); return this },
-  transform: function(t) { this.transforms.push(t); return this },
-  route:     function(r) { this.routes    .push(r); return this }
-}
+// TODO: Expectations should be a able to send
 
 
-var module =
-  Object.create(Module)
-    .route({
-      channel: 'start',
-      transform: 'add_five_and_seven'
+
+// Mark II+
+// TODO: Submodules
+// TODO: Run single world
+
+var pipes = require('./pipes')
+
+var addingModule = pipes.module()
+  .route({
+    channel: 'start',
+    transform: 'add_five_and_seven'
+  })
+  .transform(function add_five_and_seven(work) {
+    work.done('add', { a: 5, b: 7 })
+  })
+  .transform(function add(work) {
+    work.done('add_success', {
+      result: work.message.a + work.message.b
     })
-    .transform(function add_five_and_seven(work) {
-      work.done('add', { a: 5, b: 7 })
-    })
-    .transform(function add(work) {
-      work.done('add_success', {
-        result: work.message.a + work.message.b
-      })
-    })
-    .world({
-      label: 'Playground',
-      expectations: [{
-        channel: 'add_success',
-        message: {
-          result: 12
-        }
-      }]
-    })
-    .world({
-      label: 'Test failure',
-      expectations: [{
-        channel: 'add_success',
-        message: {
-          result: 13 // <- not 12!
-        }
-      }]
-    })
+  })
 
 
-
-
-runner.run(module).then(function(result) {
-  console.log("result is", JSON.stringify(result, null, 2))
+pipes.run(Object.create(addingModule)
+  .world({
+    label: 'Playground',
+    expectations: [{
+      channel: 'add_success',
+      message: {
+        result: 12
+      }
+    }]
+  })
+).then(function(result) {
   var timeline = result.timelines[0]
   timeline.world.label.should.equal('Playground')
   var e = timeline.events
@@ -93,43 +72,83 @@ runner.run(module).then(function(result) {
   e[2].expectation.message.result.should.equal(12)
   e[2].expectation.match.should.equal(true)
 
-  timeline = result.timelines[1]
-  timeline.world.label.should.equal('Test failure')
-  e = timeline.events
+}).done(function() {
+  console.log("All is well")
+})
 
+pipes.run(Object.create(addingModule)
+  .world({
+    label: 'Test failure',
+    expectations: [{
+      channel: 'add_success',
+      message: {
+        result: 13 // <- not 12!
+      }
+    }]
+  })
+).then(function(result) {
+  var timeline = result.timelines[0]
+  var e = timeline.events
+  timeline.world.label.should.equal('Test failure')
+
+  console.log(JSON.stringify(result,null,2))
   e[2].expectation.message.result.should.equal(13)
   e[2].expectation.match.should.equal(false)
 
-})
-/*
-.then(function() {
-  return runner.run({
-    transforms: {
-      add: function(work) {
-        work.done({
-          result: work.message.a + work.message.b
-        })
-      }
-    },
-    worlds: [{
-      label: 'Staging',
-      interceptors: [{
-        channel: 'add successful',
-        expect: {
-          result: 7
-        }
-      }]
-    }]
-  })
-}).then(function(result) {
-  var timeline = result.timelines[0]
-  timeline.world.label.should.equal('Staging')
-  timeline.events[0].sent.channel.should.equal('start')
-  timeline.events[0].sent.message.should.equal(true)
-
-})*/.done(function() {
+}).done(function() {
   console.log("All is well.")
 })
 
+// TODO: Support for multiple expectations on one channel
 
+pipes.run(pipes.module()
+  .route({
+    channel: 'start',
+    transform: 'add_five_and_seven'
+  })
+  .route({
+    channel: 'start',
+    transform: 'add_five_and_eight'
+  })
+  .transform(function add_five_and_seven(work) {
+    work.done('add', { a: 5, b: 7 })
+  })
+  .transform(function add_five_and_eight(work) {
+    work.done('add', { a: 5, b: 8 })
+  })
+  .transform(function add(work) {
+    work.done('add_success', {
+      result: work.message.a + work.message.b
+    })
+  })
+  .world({
+    label: 'Dual expectations',
+    expectations: [
+    {
+      channel: 'add_success',
+      message: {
+        result: 12
+      }
+    },{
+      channel: 'add_success',
+      message: {
+        result: 13
+      }
+    }]
+  })
+).then(function(result) {
+  //console.log(JSON.stringify(result,null,2))
+  var timeline = result.timelines[0]
+  var e = timeline.events
+  timeline.world.label.should.equal('Dual expectations')
 
+  e[2].received.message.result.should.equal(12)
+
+  e[2].expectation.match.should.equal(true)
+
+  e[5].received.message.result.should.equal(13)
+  e[5].expectation.match.should.equal(true)
+
+}).done(function() {
+  console.log("All is well.")
+})
