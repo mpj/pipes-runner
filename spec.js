@@ -9,7 +9,6 @@ var expect = chai.expect
 // TODO: Support combining routes
 // TODO: Implement foreigners
 // TODO: Message optional for expectations
-// TODO: Should be sensitive to order of arrays when matching expectations
 
 
 // Mark II+ and later
@@ -300,20 +299,45 @@ pipes.module({}).runWorld({
     }
   },{
     channel: 'test_channel',
-    message: [ 2, { property: 1 }],
+    message: [ { property: 1 }, 2 ],
     send: {
       channel: 'success',
       message: true
     }
   }]
 }).then(function(timeline) {
-  console.log(JSON.stringify(timeline, null ,2))
   timeline.unmet.length.should.equal(0)
   var e = timeline.events
   e[0].sent.channel.should.equal('test_channel')
   e[1].received.channel.should.equal('test_channel')
   e[1].expectation.channel.should.equal('test_channel')
   e[1].sent.channel.should.equal('success')
+
+}).done(function() {
+  console.log("all is well")
+})
+
+pipes.module({}).runWorld({
+  name: 'Test array ORDER in expectation comparisions',
+  expectations: [{
+    channel: 'start',
+    message: true,
+    send: {
+      channel: 'test_channel',
+      message: [ { property: 1 }, 2  ]
+    }
+  },{
+    channel: 'test_channel',
+    message: [ 2, { property: 1 }], // Should fail!
+    send: {
+      channel: 'success',
+      message: true
+    }
+  }]
+}).then(function(timeline) {
+  timeline.events.length.should.equal(1)
+  timeline.unmet.length.should.equal(1)
+  timeline.unmet[0].channel.should.equal('test_channel')
 
 }).done(function() {
   console.log("all is well")

@@ -4,10 +4,10 @@ var filter = require('mout/array/filter')
 var reject = require('mout/array/reject')
 var pluck = require('mout/array/pluck')
 var partial = require('mout/function/partial')
-var deepEquals = require('mout/object/deepEquals')
-var deepMatches = require('mout/object/deepMatches')
+var nodeDeepEqual = require('deep-equal')
 var teaMerge = require('tea-merge');
 var deepClone = require('mout/lang/deepClone')
+var difference = require('mout/array/difference')
 
 function findTransformByName(module, transformName) {
   return find(module.transforms, function(t) {
@@ -26,7 +26,10 @@ function sendUntilDone(module, expectations, channel, message, events) {
   var expectationsOnChannel = filter(expectations, { channel: channel })
   if (expectationsOnChannel.length > 0) {
     var match = find(expectationsOnChannel, function(expectation) {
-      return deepMatches(expectation.message, message)
+      // I'm not entirely sure about this comparison, since
+      // it makes an assumption that two objects with the same
+      // properties will be stringified identically.
+      return nodeDeepEqual(expectation.message, message)
     })
     if (match) {
       events.push({
@@ -130,21 +133,13 @@ function sendUntilDone(module, expectations, channel, message, events) {
 function runWorld(module, world) {
   return sendUntilDone(module, world.expectations, 'start', true).then(function(events) {
 
-    var metExpectations = []
-    pluck(events, 'expectation').forEach(function(expectation) {
-      if (expectation) metExpectations.push(expectation)
-    })
-    var unmetExpectations =
-      reject(world.expectations, function(expectation) {
-        return !!find(metExpectations, function(met){
-          return deepEquals(met, expectation)
-        })
-      })
+    var metExpectations =
+      pluck(filter(events, 'expectation'), 'expectation')
 
     return {
       world: { name: world.name },
       events: events,
-      unmet: unmetExpectations
+      unmet: difference(world.expectations, metExpectations)
     }
   })
 }
