@@ -119,8 +119,10 @@ function sendUntilDone(module, expectations, channel, message, events) {
             channel: channel,
             message: message
           },
-          transform: transform.name,
-          timedOut: true
+          transform: {
+            name: transform.name,
+            timedOut: true
+          }
         })
         deferredSend.resolve(events)
       }, 2000)
