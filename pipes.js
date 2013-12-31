@@ -5,6 +5,7 @@ var reject = require('mout/array/reject')
 var pluck = require('mout/array/pluck')
 var partial = require('mout/function/partial')
 var deepEquals = require('mout/object/deepEquals')
+var deepMatches = require('mout/object/deepMatches')
 var teaMerge = require('tea-merge');
 var deepClone = require('mout/lang/deepClone')
 
@@ -25,7 +26,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
   var expectationsOnChannel = filter(expectations, { channel: channel })
   if (expectationsOnChannel.length > 0) {
     var match = find(expectationsOnChannel, function(expectation) {
-      return deepEquals(expectation.message, message)
+      return deepMatches(expectation.message, message)
     })
     if (match) {
       events.push({
