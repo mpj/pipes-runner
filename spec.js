@@ -3,6 +3,14 @@ chai.Assertion.includeStack = true;
 var Q = require('q')
 chai.should()
 var expect = chai.expect
+var teaMerge = require('tea-merge');
+var deepClone = require('mout/lang/deepClone')
+
+// Extend a base module with more properties.
+// Will return a copy of the original module
+var extend = function(module, extensions) {
+  return teaMerge(deepClone(module), extensions)
+}
 
 // Mark I
 // TODO: Support deepEquals for arrays (deepMatch instead?)
@@ -15,6 +23,8 @@ var expect = chai.expect
 
 // Maybe / Ideas
 // TODO: refactor to simple json structure instead
+// TODO: function to merge modules
+// TODO: validate world
 // TODO: Mark as unrouted
 // Module names
 // Not happy with world syntax - perhaps they should
@@ -28,30 +38,36 @@ var expect = chai.expect
 
 var pipes = require('./pipes')
 
-var addingModule = pipes.module()
-  .transform(function add(work) {
-    work.done('add_success', {
-      result: work.message.a + work.message.b
-    })
-  })
+var addingModule = {
+  transforms: [
+    function add(work) {
+      work.done('add_success', {
+        result: work.message.a + work.message.b
+      })
+    }
+  ]
+}
 
-pipes.run(
-  Object.create(addingModule)
-  .route({
+pipes.run(extend(addingModule, {
+  routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
-  })
-  .transform(function add_five_and_seven(work) {
-    work.done('add', { a: 5, b: 7 })
-  })
-  .world(pipes.world('Playground')
-    .expectation({
+  }],
+  transforms: [
+    function add_five_and_seven(work) {
+      work.done('add', { a: 5, b: 7 })
+    }
+  ],
+  worlds: [{
+    name: 'Playground',
+    expectations: [{
       channel: 'add_success',
       message: {
         result: 12
       }
-    })
-)).then(function(result) {
+    }]
+  }]
+})).then(function(result) {
   var timeline = result.timelines[0]
   timeline.world.name.should.equal('Playground')
   var e = timeline.events
@@ -82,20 +98,21 @@ pipes.run(
   console.log("All is well")
 })
 
-pipes.run(Object.create(addingModule)
-  .route({
+pipes.run(extend(addingModule, {
+  routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
-  })
-  .world(pipes.world('Test failure')
-    .expectation({
+  }],
+  worlds: [{
+    name: 'Test failure',
+    expectations: [{
       channel: 'add_success',
       message: {
         result: 13 // <- not 12!
       }
-    })
-  )
-).then(function(result) {
+    }]
+  }]
+})).then(function(result) {
   var timeline = result.timelines[0]
   var e = timeline.events
   timeline.world.name.should.equal('Test failure')
@@ -108,37 +125,39 @@ pipes.run(Object.create(addingModule)
 })
 
 
-pipes.run(Object.create(addingModule)
-  .route({
+pipes.run(extend(addingModule, {
+  routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
-  })
-  .route({
+  },{
     channel: 'start',
     transform: 'add_five_and_eight'
-  })
-  .transform(function add_five_and_seven(work) {
-    work.done('add', { a: 5, b: 7 })
-  })
-  .transform(function add_five_and_eight(work) {
-    work.done('add', { a: 5, b: 8 })
-  })
-  .world(pipes.world('Dual expectations')
-    .expectation({
-      channel: 'add_success',
-      message: {
-        result: 12
+  }],
+  transforms: [
+    function add_five_and_seven(work) {
+      work.done('add', { a: 5, b: 7 })
+    },
+    function add_five_and_eight(work) {
+      work.done('add', { a: 5, b: 8 })
+    }
+  ],
+  worlds: [{
+    name: 'Dual expectations',
+    expectations: [
+      {
+        channel: 'add_success',
+        message: {
+          result: 12
+        }
+      },{
+        channel: 'add_success',
+        message: {
+          result: 13
+        }
       }
-    })
-    .expectation({
-      channel: 'add_success',
-      message: {
-        result: 13
-      }
-    })
-  )
-).then(function(result) {
-  //console.log(JSON.stringify(result,null,2))
+    ]
+  }]
+})).then(function(result) {
   var timeline = result.timelines[0]
   var e = timeline.events
   timeline.world.name.should.equal('Dual expectations')
@@ -152,36 +171,38 @@ pipes.run(Object.create(addingModule)
 
 
 
-pipes.run(Object.create(addingModule)
-  .route({
+
+pipes.run(extend(addingModule, {
+  routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
-  })
-  .route({
+  }, {
     channel: 'start',
     transform: 'add_five_and_nine'
-  })
-  .transform(function add_five_and_seven(work) {
-    work.done('add', { a: 5, b: 7 })
-  })
-  .transform(function add_five_and_nine(work) {
-    work.done('add', { a: 5, b: 9 })
-  })
-  .world(pipes.world('Dual expectations')
-    .expectation({
+  }],
+  transforms: [
+    function add_five_and_seven(work) {
+      work.done('add', { a: 5, b: 7 })
+    },
+    function add_five_and_nine(work) {
+      work.done('add', { a: 5, b: 9 })
+    }
+  ],
+  worlds: [{
+    name: 'Dual expectations',
+    expectations: [{
       channel: 'add_success',
       message: {
         result: 12
       }
-    })
-    .expectation({
+    }, {
       channel: 'add_success',
       message: {
         result: 13
       }
-    })
-  )
-).then(function(result) {
+    }]
+  }]
+})).then(function(result) {
   //console.log(JSON.stringify(result,null,2))
   var timeline = result.timelines[0]
   var e = timeline.events
@@ -196,23 +217,24 @@ pipes.run(Object.create(addingModule)
 })
 
 // Takes too long to execute
-pipes.run(pipes.module()
-  .route({
+pipes.run({
+  routes: [{
     channel: 'start',
     transform: 'long_running'
-  })
-  .transform(function long_running(work) {
+  }],
+  transforms: [function long_running(work) {
     setTimeout(function() {
       work.done('long_running_success', true)
     }, 2010)
-  })
-  .world(pipes.world('Handles timeouts')
-    .expectation({
+  }],
+  worlds: [{
+    name: 'Handles timeouts',
+    expectations: [{
       channel: 'long_running_success',
       message: true
-    })
-  )
-).then(function(result) {
+    }]
+  }]
+}).then(function(result) {
   console.log(JSON.stringify(result,null,2))
   var e = result.timelines[0].events
   e[0].received.channel.should.equal('start')
@@ -231,13 +253,13 @@ pipes.run(pipes.module()
 })
 
 
-pipes.run(pipes.module()
-  .route({
+pipes.run({
+  routes: [{
     channel: 'start',
     transform: 'this_transform_does_not_exist'
-  })
-  .world(pipes.world('Empty world'))
-).then(function(result) {
+  }],
+  worlds: [{}]
+}).then(function(result) {
   var firstEvent = result.timelines[0].events[0]
   firstEvent.received.channel.should.equal('start')
   firstEvent.transform.name.should.equal('this_transform_does_not_exist')
@@ -247,22 +269,22 @@ pipes.run(pipes.module()
   console.log("All is well.")
 })
 
-pipes.run(pipes.module()
-  .world(pipes.world('Empty world')
-    .expectation({
-      channel: 'start',
-      message: true,
-      send: {
+pipes.run({
+  worlds: [{
+      name: 'Empty world',
+      expectations: [{
+        channel: 'start',
+        message: true,
+        send: {
+          channel: 'test_channel',
+          message: 'test_message'
+        }
+      },{
         channel: 'test_channel',
         message: 'test_message'
-      }
-    })
-    .expectation({
-      channel: 'test_channel',
-      message: 'test_message'
-    })
-  )
-).then(function(result) {
+      }]
+    }]
+}).then(function(result) {
   var events = result.timelines[0].events
   events[0].expectation.channel.should.equal('start')
   events[0].expectation.message.should.equal(true)

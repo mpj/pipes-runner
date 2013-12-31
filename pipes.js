@@ -156,26 +156,12 @@ function runModule(module) {
   })
 }
 
-
 function pushOnPropertyArray(propertyName, obj) {
   this[propertyName] = this[propertyName] || []
   this[propertyName].push(obj)
   return this
 }
 
-var World = {
-  expectation: partial(pushOnPropertyArray, 'expectations'),
-}
-
-var Module = {
-  world:     partial(pushOnPropertyArray, 'worlds'),
-  transform: partial(pushOnPropertyArray, 'transforms'),
-  route:     partial(pushOnPropertyArray, 'routes')
-}
-
 module.exports = {
-  run: runModule,
-  module: function() { return Object.create(Module) },
-  world: function(name) {
-    return Object.create(World, { name: { value: name }}) }
+  run: runModule
 }
