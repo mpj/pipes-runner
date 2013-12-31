@@ -146,22 +146,10 @@ function runWorld(module, world) {
   })
 }
 
-function runModule(module) {
-  var runWorldInModule = partial(runWorld, module)
-  var whenTimelines = Q.all(module.worlds.map(runWorldInModule))
-  return whenTimelines.then(function(timelines) {
-    return {
-      timelines: timelines
-    }
-  })
-}
-
-function pushOnPropertyArray(propertyName, obj) {
-  this[propertyName] = this[propertyName] || []
-  this[propertyName].push(obj)
-  return this
+function moduleRunner(module) {
+  return { runWorld: partial(runWorld, module) }
 }
 
 module.exports = {
-  run: runModule
+  module: moduleRunner
 }

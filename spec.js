@@ -8,6 +8,7 @@ var deepClone = require('mout/lang/deepClone')
 
 // Extend a base module with more properties.
 // Will return a copy of the original module
+// TODO: move this into pipes?
 var extend = function(module, extensions) {
   return teaMerge(deepClone(module), extensions)
 }
@@ -19,9 +20,10 @@ var extend = function(module, extensions) {
 
 // Mark II+
 // TODO: Submodules
-// TODO: Run single world
+
 
 // Maybe / Ideas
+// * Modules are a shitty name because of npm and commonjs
 // TODO: refactor to simple json structure instead
 // TODO: function to merge modules
 // TODO: validate world
@@ -48,7 +50,7 @@ var addingModule = {
   ]
 }
 
-pipes.run(extend(addingModule, {
+pipes.module(extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -57,18 +59,16 @@ pipes.run(extend(addingModule, {
     function add_five_and_seven(work) {
       work.done('add', { a: 5, b: 7 })
     }
-  ],
-  worlds: [{
-    name: 'Playground',
-    expectations: [{
-      channel: 'add_success',
-      message: {
-        result: 12
-      }
-    }]
+  ]
+})).runWorld({
+  name: 'Playground',
+  expectations: [{
+    channel: 'add_success',
+    message: {
+      result: 12
+    }
   }]
-})).then(function(result) {
-  var timeline = result.timelines[0]
+}).then(function(timeline) {
   timeline.world.name.should.equal('Playground')
   var e = timeline.events
 
@@ -98,22 +98,20 @@ pipes.run(extend(addingModule, {
   console.log("All is well")
 })
 
-pipes.run(extend(addingModule, {
+pipes.module(extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
-  }],
-  worlds: [{
-    name: 'Test failure',
-    expectations: [{
-      channel: 'add_success',
-      message: {
-        result: 13 // <- not 12!
-      }
-    }]
   }]
-})).then(function(result) {
-  var timeline = result.timelines[0]
+})).runWorld({
+  name: 'Test failure',
+  expectations: [{
+    channel: 'add_success',
+    message: {
+      result: 13 // <- not 12!
+    }
+  }]
+}).then(function(timeline) {
   var e = timeline.events
   timeline.world.name.should.equal('Test failure')
 
@@ -125,7 +123,7 @@ pipes.run(extend(addingModule, {
 })
 
 
-pipes.run(extend(addingModule, {
+pipes.module(extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -140,25 +138,23 @@ pipes.run(extend(addingModule, {
     function add_five_and_eight(work) {
       work.done('add', { a: 5, b: 8 })
     }
-  ],
-  worlds: [{
-    name: 'Dual expectations',
-    expectations: [
-      {
-        channel: 'add_success',
-        message: {
-          result: 12
-        }
-      },{
-        channel: 'add_success',
-        message: {
-          result: 13
-        }
+  ]
+})).runWorld({
+  name: 'Dual expectations',
+  expectations: [
+    {
+      channel: 'add_success',
+      message: {
+        result: 12
       }
-    ]
-  }]
-})).then(function(result) {
-  var timeline = result.timelines[0]
+    },{
+      channel: 'add_success',
+      message: {
+        result: 13
+      }
+    }
+  ]
+}).then(function(timeline) {
   var e = timeline.events
   timeline.world.name.should.equal('Dual expectations')
 
@@ -172,7 +168,7 @@ pipes.run(extend(addingModule, {
 
 
 
-pipes.run(extend(addingModule, {
+pipes.module(extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -187,24 +183,22 @@ pipes.run(extend(addingModule, {
     function add_five_and_nine(work) {
       work.done('add', { a: 5, b: 9 })
     }
-  ],
-  worlds: [{
-    name: 'Dual expectations',
-    expectations: [{
-      channel: 'add_success',
-      message: {
-        result: 12
-      }
-    }, {
-      channel: 'add_success',
-      message: {
-        result: 13
-      }
-    }]
+  ]
+}))
+.runWorld({
+  name: 'Dual expectations',
+  expectations: [{
+    channel: 'add_success',
+    message: {
+      result: 12
+    }
+  }, {
+    channel: 'add_success',
+    message: {
+      result: 13
+    }
   }]
-})).then(function(result) {
-  //console.log(JSON.stringify(result,null,2))
-  var timeline = result.timelines[0]
+}).then(function(timeline) {
   var e = timeline.events
   timeline.world.name.should.equal('Dual expectations')
 
@@ -217,7 +211,8 @@ pipes.run(extend(addingModule, {
 })
 
 // Takes too long to execute
-pipes.run({
+
+pipes.module({
   routes: [{
     channel: 'start',
     transform: 'long_running'
@@ -226,17 +221,17 @@ pipes.run({
     setTimeout(function() {
       work.done('long_running_success', true)
     }, 2010)
-  }],
-  worlds: [{
-    name: 'Handles timeouts',
-    expectations: [{
-      channel: 'long_running_success',
-      message: true
-    }]
   }]
-}).then(function(result) {
-  console.log(JSON.stringify(result,null,2))
-  var e = result.timelines[0].events
+})
+.runWorld({
+  name: 'Handles timeouts',
+  expectations: [{
+    channel: 'long_running_success',
+    message: true
+  }]
+})
+.then(function(timeline) {
+  var e = timeline.events
   e[0].received.channel.should.equal('start')
   e[0].transform.should.equal('long_running')
   expect(e[0].sent).to.be.undefined
@@ -253,14 +248,14 @@ pipes.run({
 })
 
 
-pipes.run({
+pipes.module({
   routes: [{
     channel: 'start',
     transform: 'this_transform_does_not_exist'
-  }],
-  worlds: [{}]
-}).then(function(result) {
-  var firstEvent = result.timelines[0].events[0]
+  }]
+}).runWorld([{}])
+.then(function(timeline) {
+  var firstEvent = timeline.events[0]
   firstEvent.received.channel.should.equal('start')
   firstEvent.transform.name.should.equal('this_transform_does_not_exist')
   firstEvent.transform.notFound.should.equal.true
@@ -269,23 +264,22 @@ pipes.run({
   console.log("All is well.")
 })
 
-pipes.run({
-  worlds: [{
-      name: 'Empty world',
-      expectations: [{
-        channel: 'start',
-        message: true,
-        send: {
-          channel: 'test_channel',
-          message: 'test_message'
-        }
-      },{
-        channel: 'test_channel',
-        message: 'test_message'
-      }]
-    }]
-}).then(function(result) {
-  var events = result.timelines[0].events
+pipes.module({})
+.runWorld({
+  name: 'Empty world',
+  expectations: [{
+    channel: 'start',
+    message: true,
+    send: {
+      channel: 'test_channel',
+      message: 'test_message'
+    }
+  },{
+    channel: 'test_channel',
+    message: 'test_message'
+  }]
+}).then(function(timeline) {
+  var events = timeline.events
   events[0].expectation.channel.should.equal('start')
   events[0].expectation.message.should.equal(true)
   events[0].sent.channel.should.equal('test_channel')
@@ -297,6 +291,3 @@ pipes.run({
 }).done(function() {
   console.log("All is well here.")
 })
-
-
-// TODO: One expectation succeeds, but one fails (wrong message)
