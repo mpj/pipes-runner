@@ -5,10 +5,12 @@ chai.should()
 var expect = chai.expect
 
 
+
 // Mark I
 // TODO: Support combining routes
 // TODO: Implement foreigners
 // TODO: Message optional for expectations
+// TODO: Intial message should show event
 
 
 // Mark II+ and later
@@ -231,15 +233,46 @@ pipes.module({
   e[0].transform.should.equal('long_running')
   expect(e[0].sent).to.be.undefined
   e[0].timedOut.should.be.true
-  return result
+  return timeline
 })
 .delay(10)
-.then(function(result) {
-  result.timelines[0].events.length.should.equal(1)
-  result.timelines[0].unmet[0].channel.should.equal('long_running_success')
+.then(function(timeline) {
+  timeline.events.length.should.equal(1)
+  timeline.unmet[0].channel.should.equal('long_running_success')
 })
 .done(function() {
   console.log("All is well.")
+})
+
+// NEVER executes
+var executed = false
+pipes.module({
+  routes: [{
+    channel: 'start',
+    transform: 'superlazy'
+  }],
+  transforms: [function superlazy(work) {
+    // I'm doing nuthin!
+  }]
+})
+.runWorld({
+  name: 'Handles timeouts',
+  expectations: [{
+    channel: 'long_running_success',
+    message: true
+  }]
+})
+.then(function(timeline) {
+  executed = true
+  var e = timeline.events
+  e[0].received.channel.should.equal('start')
+  e[0].transform.should.equal('superlazy')
+  expect(e[0].sent).to.be.undefined
+  e[0].timedOut.should.be.true
+})
+.timeout(2100)
+.done(function() {
+  console.log("All is well!!!")
 })
 
 

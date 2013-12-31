@@ -1,4 +1,5 @@
 var Q = require('q')
+Q.longStackSupport = true;
 var find = require('mout/array/find')
 var filter = require('mout/array/filter')
 var reject = require('mout/array/reject')
@@ -121,6 +122,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
           transform: transform.name,
           timedOut: true
         })
+        deferredSend.resolve(events)
       }, 2000)
       transform(work)
     })
