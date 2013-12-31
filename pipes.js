@@ -5,6 +5,8 @@ var reject = require('mout/array/reject')
 var pluck = require('mout/array/pluck')
 var partial = require('mout/function/partial')
 var deepEquals = require('mout/object/deepEquals')
+var teaMerge = require('tea-merge');
+var deepClone = require('mout/lang/deepClone')
 
 function findTransformByName(module, transformName) {
   return find(module.transforms, function(t) {
@@ -150,6 +152,14 @@ function moduleRunner(module) {
   return { runWorld: partial(runWorld, module) }
 }
 
+// Extend a base module with more properties.
+// Will return a copy of the original module
+// TODO: move this into pipes?
+var extendModule = function(module, extensions) {
+  return teaMerge(deepClone(module), extensions)
+}
+
 module.exports = {
-  module: moduleRunner
+  module: moduleRunner,
+  extend: extendModule
 }

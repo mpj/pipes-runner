@@ -3,15 +3,7 @@ chai.Assertion.includeStack = true;
 var Q = require('q')
 chai.should()
 var expect = chai.expect
-var teaMerge = require('tea-merge');
-var deepClone = require('mout/lang/deepClone')
 
-// Extend a base module with more properties.
-// Will return a copy of the original module
-// TODO: move this into pipes?
-var extend = function(module, extensions) {
-  return teaMerge(deepClone(module), extensions)
-}
 
 // Mark I
 // TODO: Support deepEquals for arrays (deepMatch instead?)
@@ -50,7 +42,7 @@ var addingModule = {
   ]
 }
 
-pipes.module(extend(addingModule, {
+pipes.module(pipes.extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -98,7 +90,7 @@ pipes.module(extend(addingModule, {
   console.log("All is well")
 })
 
-pipes.module(extend(addingModule, {
+pipes.module(pipes.extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -123,7 +115,7 @@ pipes.module(extend(addingModule, {
 })
 
 
-pipes.module(extend(addingModule, {
+pipes.module(pipes.extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -168,7 +160,7 @@ pipes.module(extend(addingModule, {
 
 
 
-pipes.module(extend(addingModule, {
+pipes.module(pipes.extend(addingModule, {
   routes: [{
     channel: 'start',
     transform: 'add_five_and_seven'
@@ -253,7 +245,7 @@ pipes.module({
     channel: 'start',
     transform: 'this_transform_does_not_exist'
   }]
-}).runWorld([{}])
+}).runWorld({})
 .then(function(timeline) {
   var firstEvent = timeline.events[0]
   firstEvent.received.channel.should.equal('start')
