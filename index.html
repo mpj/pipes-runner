@@ -26,6 +26,11 @@
      font-weight: bold;
    }
 
+  .timeline .item .line.selected .value:after {
+     content: " <-";
+   }
+
+
    .timeline .item .line.needsfixing .value {
      color: #ff6600;
    }
@@ -46,9 +51,13 @@
     {{#each items}}
       <div class="item">
         {{#each lines}}
-        <div class="line {{look}}">
+        <div class="line {{look}} {{#if selected}}selected{{/if}}">
           <span class="key">{{key}}</span>
           <span class="value">{{value}}</span>
+
+          {{#if tooltip}}
+            <span class="tooltip">{{tooltip}}</span>
+          {{/if}}
         </div>
         {{/each}}
       </div>
