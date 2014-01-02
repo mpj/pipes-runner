@@ -37,6 +37,16 @@ var expect = chai.expect
 
 var pipes = require('./pipes')
 
+pipes.module({})
+  .runWorld({ name: 'Empty world' })
+  .then(function(timeline) {
+    timeline.events[0].received.channel.should.equal('start')
+    timeline.events[0].received.message.should.equal(true)
+    timeline.events[0].noRoute.should.equal(true)
+  }).done(function() {
+    console.log("All is well.")
+  })
+
 var addingModule = {
   transforms: [
     function add(work) {

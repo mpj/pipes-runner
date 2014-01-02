@@ -83,6 +83,16 @@ function sendUntilDone(module, expectations, channel, message, events) {
       }
     })
 
+    if (receivers.length === 0) {
+      events.push({
+        received: {
+          channel: channel,
+          message: message
+        },
+        noRoute: true
+      })
+    }
+
     var sendPromises = []
     receivers.forEach(function(transform) {
 
