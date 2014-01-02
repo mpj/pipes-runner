@@ -44,7 +44,7 @@ app = connect()
       b.bundle().pipe(res);
     }
     if(req.url === '/body') {
-      res.writeHead(200, { 'Content-Type': 'text/javascript' });
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(fs.readFileSync(file).toString())
     }
   })

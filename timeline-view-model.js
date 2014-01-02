@@ -12,6 +12,8 @@ function timelineViewModel(timeline) {
   var items = events.map(function(e) {
     var item = { lines: [] }
 
+    if (e.transform && e.transform.timedOut)
+      item.lines.push({ key: 'sent', value: 'timed out', look: 'needsfixing'})
 
     if (e.sent)
       item.lines.push({ key: 'sent', value: e.sent.channel, _tooltip: e.sent.message })
@@ -189,6 +191,55 @@ if (process.argv[2] === 'test') {
   vm.items[1].lines[0].selected.should.equal(false)
   vm.items[0].lines[1].selected.should.equal(true)
 
+
+
+  vm = timelineViewModel({
+    "world": {},
+    "events": [
+      {
+        "received": {
+          "channel": "start",
+          "message": true
+        },
+        "expectation": {
+          "channel": "start",
+          "message": true,
+          "send": {
+            "channel": "add",
+            "message": [
+              7,
+              6
+            ]
+          }
+        },
+        "sent": {
+          "channel": "add",
+          "message": [
+            7,
+            6
+          ]
+        }
+      },
+      {
+        "received": {
+          "channel": "add",
+          "message": [
+            7,
+            6
+          ]
+        },
+        "transform": {
+          "name": "add",
+          "timedOut": true
+        }
+      }
+    ],
+    "unmet": []
+  })
+
+  vm.items[0].lines[0].key.should.equal("sent")
+  vm.items[0].lines[0].value.should.equal("timed out")
+  vm.items[0].lines[0].look.should.equal("needsfixing")
 
 
   console.log("**** YAY! All tests ran fine.")
