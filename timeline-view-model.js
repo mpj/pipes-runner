@@ -33,6 +33,19 @@ function timelineViewModel(timeline) {
     return item
   })
 
+  timeline.unmet.forEach(function(expectation) {
+    var line = {
+      key: 'expected',
+      value: expectation.channel,
+      look: 'needsfixing',
+      _tooltip: expectation.message
+    }
+    items.unshift({
+      lines: [line]
+    })
+    allLines.unshift(line)
+  })
+
 
   var selectedIndex = 0
 
@@ -240,6 +253,64 @@ if (process.argv[2] === 'test') {
   vm.items[0].lines[0].key.should.equal("sent")
   vm.items[0].lines[0].value.should.equal("timed out")
   vm.items[0].lines[0].look.should.equal("needsfixing")
+
+
+  vm = timelineViewModel({
+    "world": {},
+    "events": [
+      {
+        "received": {
+          "channel": "start",
+          "message": true
+        },
+        "expectation": {
+          "channel": "start",
+          "message": true,
+          "send": {
+            "channel": "add",
+            "message": [
+              7,
+              6
+            ]
+          }
+        },
+        "sent": {
+          "channel": "add",
+          "message": [
+            7,
+            6
+          ]
+        }
+      },
+      {
+        "received": {
+          "channel": "add",
+          "message": [
+            7,
+            6
+          ]
+        },
+        "transform": {
+          "name": "add"
+        },
+        "sent": {
+          "channel": "add_success",
+          "message": 13
+        }
+      }
+    ],
+    "unmet": [
+      {
+        "channel": "add_success",
+        "message": 12
+      }
+    ]
+  })
+
+  vm.items[0].lines[0].key.should.equal('expected')
+  vm.items[0].lines[0].value.should.equal('add_success')
+  vm.items[0].lines[0].look.should.equal('needsfixing')
+  vm.items[0].lines[0].tooltip.should.equal(12)
 
 
   console.log("**** YAY! All tests ran fine.")
