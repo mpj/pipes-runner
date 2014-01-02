@@ -26,10 +26,20 @@ function onBody(body) {
   }
 
   console.log("Module was parsed:",module)
-  pipes.module(module)
-  .runWorld((module.worlds && module.worlds[0]) || {})
-  .then(function(timeline) {
-    console.log("timeline result", JSON.stringify(timeline, null,2))
+
+  var whenTimeline;
+
+  try {
+    whenTimeline = pipes.module(module).runWorld((module.worlds && module.worlds[0]) || {})
+  } catch(e) {
+    var findFunctionName = e.stack.match(/at\s(.+)\s\(eval/)
+    var functionName =  findFunctionName && findFunctionName[1]
+    var findLineNumber = e.stack.match(/\d+:\d+\),.+:(\d):\d+\)/)
+    var lineNumber = findLineNumber && findLineNumber[1]
+    $(".main-template-target").html("Error running module<br />"+ e.message + " (on line " + lineNumber + " in module - in transform <strong>" + functionName + '</strong>)')
+    return
+  }
+  whenTimeline.then(function(timeline) {
     if(currentViewModel)
       currentViewModel.onChange = null;
     currentViewModel = createViewmodel(timeline)
@@ -40,8 +50,9 @@ function onBody(body) {
     render()
     currentViewModel.onChange = render
   })
-
+  .done()
 }
+
 
 
 $(document).ready(function() {
