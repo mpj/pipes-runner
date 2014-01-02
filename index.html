@@ -1,0 +1,130 @@
+<html>
+<head>
+ <style>
+   html, body, div {
+     font-family: Consolas, Courier;
+     font-size: 18px;
+   }
+
+   .timeline {
+
+   }
+
+   .timeline .item {
+     border-bottom: 1px solid gray;
+     padding-bottom: 15px;
+     margin-bottom: 15px;
+     clear: both;
+   }
+
+   .timeline .item .line .key {
+     width: 120px;
+     display: inline-block;
+     color: gray;
+   }
+   .timeline .item .line .value {
+     font-weight: bold;
+   }
+
+   .timeline .item .line.needsfixing .value {
+     color: #ff6600;
+   }
+
+   .timeline .item .line.works .value {
+     color: #3ca900;
+   }
+
+ </style>
+</head>
+<body>
+
+
+<div class="main-template-target"></div>
+
+<script id="main-template" type="text/x-handlebars-template">
+  <div class="timeline">
+    {{#each items}}
+      <div class="item">
+        {{#each lines}}
+        <div class="line {{look}}">
+          <span class="key">{{key}}</span>
+          <span class="value">{{value}}</span>
+        </div>
+        {{/each}}
+      </div>
+    {{/each}}
+  </div>
+
+  <h1>{{world.name}}</h1>
+
+  {{#if unmet.length}}
+    <div style="color:orange">
+      <strong>Unmet expectations</strong>
+      {{#each unmet}}
+        <div>&#978; {{channel}}</div>
+        <div>&Phi; {{message}}
+      {{#each sent.message}}
+        {{@key}}: {{this}}
+      {{/each}}</div>
+      <br />
+      {{/each}}
+      <br />
+    </div>
+  {{/if}}
+
+  {{#each events}}
+
+  {{#if sent}}
+    <div>&#978; {{sent.channel}}</div>
+    <div>&uarr;</div>
+    &Phi; {{sent.message}}
+    {{#each sent.message}}
+      {{@key}}: {{this}}
+    {{/each}}
+    <div>&uarr;</div>
+  {{/if}}
+
+  {{#if expectation}}
+    <span style="color:green">&Omicron; {{expectation.channel}} (Expected)</span>
+  {{/if}}
+
+  {{#if transform}}
+    {{#if transform.timedOut}}
+      <span style="color:red">&Delta; {{transform.name}} (Timed out)</span>
+    {{else}}
+      {{#if transform.notFound}}
+        <span style="color:red">&Delta; {{transform.name}} (Not found)</span>
+      {{else}}
+        &Delta; {{transform.name}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+  <div>&uarr;</div>
+  <div>&#978; {{received.channel}}</div>
+  <div>&uarr;</div>
+  <div>
+    &Phi; {{received.message}}
+    {{#each received.message}}
+      {{@key}}: {{this}}
+    {{/each}}
+  </div>
+  <div>&uarr;</div>
+
+
+
+
+
+
+
+  {{/each}}
+
+
+
+</script>
+
+<script type="text/javascript" src="/faye.js"></script>
+<script type="text/javascript" src="/client.js"></script>
+
+</body>
+
+</html>
