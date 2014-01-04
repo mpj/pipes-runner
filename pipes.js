@@ -45,10 +45,9 @@ function sendUntilDone(module, expectations, channel, message, context) {
   if (implicitTransform)
     receivers.push(implicitTransform)
 
-  // 3. See if this channel is routed to a transform
-  // explicitly by routes
-  var routesOnChannel = filter(module.routes, { channel: channel })
-  routesOnChannel.forEach(function(route) {
+  // Finally, add the explicitly routed transforms for execution.
+  var routesOnChannel =
+  filter(module.routes, { channel: channel }).forEach(function(route) {
     var transform = findTransformByName(module, route.transform)
     if (!transform) {
       context.events.push({
@@ -68,35 +67,15 @@ function sendUntilDone(module, expectations, channel, message, context) {
     }
   })
 
-  var sendPromises = []
+  var transformPromises = []
   receivers.forEach(function(transform) {
 
-    var deferredSend = Q.defer()
-    sendPromises.push(deferredSend.promise)
+    var transformComplete = Q.defer()
+    transformPromises.push(transformComplete.promise)
+
+    // Disallow transforms to execute for more than 2000ms
     var timeoutHandle;
     var timedOut = false
-    var work = {
-      message: message,
-      done: function(sendChannel, sendMessage) {
-        if(timedOut) return;
-        clearTimeout(timeoutHandle)
-        context.events.push({
-          received: {
-            channel: channel,
-            message: message
-          },
-          transform: {
-            name: transform.name
-          },
-          sent: {
-            channel: sendChannel,
-            message: sendMessage
-          }
-        })
-        sendUntilDone(module, expectations, sendChannel, sendMessage, context)
-          .then(deferredSend.resolve)
-      }
-    }
     timeoutHandle = setTimeout(function() {
       timedOut = true
       context.events.push({
@@ -111,11 +90,43 @@ function sendUntilDone(module, expectations, channel, message, context) {
           timedOut: true
         }
       })
-      deferredSend.resolve(context.events)
+      transformComplete.resolve(context.events)
     }, 2000)
+
+    // Create the work object that we're going to send into
+    // the transform.
+    var work = {
+      message: message,
+      done: function(sendChannel, sendMessage) {
+        if(timedOut) {
+          // Transform has already timed out, don't
+          // create an event from whatever comes back.
+          return;
+        }
+        // Okay, we got a before timed out, cancel the timeout.
+        clearTimeout(timeoutHandle)
+
+        context.events.push({
+          received: {
+            channel: channel,
+            message: message
+          },
+          transform: {
+            name: transform.name
+          },
+          sent: {
+            channel: sendChannel,
+            message: sendMessage
+          }
+        })
+        sendUntilDone(module, expectations, sendChannel, sendMessage, context)
+          .then(transformComplete.resolve)
+      }
+    }
+
     transform(work)
   })
-  return Q.all(sendPromises).then(function() { return context })
+  return Q.all(transformPromises).then(function() { return context })
 
 
 }
