@@ -2,8 +2,7 @@ var chai = require('chai')
 chai.Assertion.includeStack = true;
 var Q = require('q')
 chai.should()
-var expect = chai.expect
-
+var expect = chai.expect;
 
 
 // Mark I
@@ -12,6 +11,8 @@ var expect = chai.expect
 // TODO: Message optional for expectations
 // TODO: Intial message should show event
 
+// TODO: Validate that route has a delivery and a transform
+// TODO: validate delivieries
 
 // Mark II+ and later
 // * lastChange route (property)
@@ -41,8 +42,8 @@ pipes.module({})
   .runWorld({ name: 'Empty world' })
   .then(function(timeline) {
     timeline.events.length.should.equal(0)
-    timeline.unhandled[0].channel.should.equal('start')
-    timeline.unhandled[0].message.should.equal(true)
+    timeline.unhandled[0][0].should.equal('start')
+    timeline.unhandled[0][1].should.equal(true)
   }).done(function() {
     console.log("All is well.")
   })
@@ -59,7 +60,7 @@ var addingModule = {
 
 pipes.module(pipes.extend(addingModule, {
   routes: [{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'add_five_and_seven'
   }],
   transforms: [
@@ -70,35 +71,26 @@ pipes.module(pipes.extend(addingModule, {
 })).runWorld({
   name: 'Playground',
   expectations: [{
-    channel: 'add_success',
-    message: {
-      result: 12
-    }
+    delivery: [ 'add_success', { result: 12 } ]
   }]
 }).then(function(timeline) {
   timeline.world.name.should.equal('Playground')
   var e = timeline.events
 
-  e[0].received.channel.should.equal('start')
-  e[0].received.message.should.equal(true)
+  e[0].received.should.deep.equal(['start', true])
   e[0].transform.name.should.equal('add_five_and_seven')
-  e[0].sent.channel.should.equal('add')
-  e[0].sent.message.a.should.equal(5)
-  e[0].sent.message.b.should.equal(7)
+  e[0].sent.should.deep.equal(['add', { a: 5, b: 7 }])
 
   // There is no explicit route for add, but
   // if channel name matches perfectly, the message is routed
   // to the transform with the same name
-  e[1].received.channel.should.equal('add')
-  e[1].received.message.a.should.equal(5)
-  e[1].received.message.b.should.equal(7)
+  e[1].received.should.deep.equal(['add', { a: 5, b: 7}])
+
   e[1].transform.name.should.equal('add')
-  e[1].sent.channel.should.equal('add_success')
-  e[1].sent.message.result.should.equal(12)
+  e[1].sent.should.deep.equal(['add_success', { result: 12 }])
 
   // Success expectation
-  e[2].received.channel.should.equal('add_success')
-  e[2].received.message.result.should.equal(12)
+  e[2].received.should.deep.equal(['add_success', { result: 12 }])
   e[2].transform.name.should.equal('expect')
 
 }).done(function() {
@@ -107,23 +99,21 @@ pipes.module(pipes.extend(addingModule, {
 
 pipes.module(pipes.extend(addingModule, {
   routes: [{
-    channel: 'start',
+    delivery: [ 'start' ],
     transform: 'add_five_and_seven'
   }]
 })).runWorld({
   name: 'Test failure',
   expectations: [{
-    channel: 'add_success',
-    message: {
+    delivery: ['add_success', {
       result: 13 // <- not 12!
-    }
+    }]
   }]
 }).then(function(timeline) {
   var e = timeline.events
   timeline.world.name.should.equal('Test failure')
 
-  //console.log(JSON.stringify(result,null,2))
-  timeline.unmet[0].message.result.should.equal(13)
+  timeline.unmet[0].delivery[1].result.should.equal(13)
 
 }).done(function() {
   console.log("All is well.")
@@ -132,10 +122,10 @@ pipes.module(pipes.extend(addingModule, {
 
 pipes.module(pipes.extend(addingModule, {
   routes: [{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'add_five_and_seven'
   },{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'add_five_and_eight'
   }],
   transforms: [
@@ -150,23 +140,21 @@ pipes.module(pipes.extend(addingModule, {
   name: 'Dual expectations',
   expectations: [
     {
-      channel: 'add_success',
-      message: {
+      delivery: [ 'add_success', {
         result: 12
-      }
+      }]
     },{
-      channel: 'add_success',
-      message: {
+      delivery: [ 'add_success', {
         result: 13
-      }
+      }]
     }
   ]
 }).then(function(timeline) {
   var e = timeline.events
   timeline.world.name.should.equal('Dual expectations')
 
-  e[2].received.message.result.should.equal(12)
-  e[5].received.message.result.should.equal(13)
+  e[2].received.should.deep.equal(['add_success', { result: 12 } ])
+  e[5].received.should.deep.equal(['add_success', { result: 13 } ])
 
 }).done(function() {
   console.log("All is well.")
@@ -177,10 +165,10 @@ pipes.module(pipes.extend(addingModule, {
 
 pipes.module(pipes.extend(addingModule, {
   routes: [{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'add_five_and_seven'
   }, {
-    channel: 'start',
+    delivery: ['start'],
     transform: 'add_five_and_nine'
   }],
   transforms: [
@@ -195,23 +183,21 @@ pipes.module(pipes.extend(addingModule, {
 .runWorld({
   name: 'Dual expectations',
   expectations: [{
-    channel: 'add_success',
-    message: {
+    delivery: ['add_success', {
       result: 12
-    }
+    }]
   }, {
-    channel: 'add_success',
-    message: {
+    delivery: ['add_success', {
       result: 13
-    }
+    }]
   }]
 }).then(function(timeline) {
   var e = timeline.events
   timeline.world.name.should.equal('Dual expectations')
 
   timeline.unmet.length.should.equal(1)
-  timeline.unmet[0].channel.should.equal('add_success')
-  timeline.unmet[0].message.result.should.equal(13)
+  timeline.unmet[0].delivery[0].should.equal('add_success')
+  timeline.unmet[0].delivery[1].result.should.equal(13)
 
 }).done(function() {
   console.log("All is well.")
@@ -221,7 +207,7 @@ pipes.module(pipes.extend(addingModule, {
 
 pipes.module({
   routes: [{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'long_running'
   }],
   transforms: [function long_running(work) {
@@ -233,13 +219,12 @@ pipes.module({
 .runWorld({
   name: 'Handles timeouts',
   expectations: [{
-    channel: 'long_running_success',
-    message: true
+    delivery: [ 'long_running_success', true ]
   }]
 })
 .then(function(timeline) {
   var e = timeline.events
-  e[0].received.channel.should.equal('start')
+  e[0].received.should.deep.equal(['start', true])
   e[0].transform.name.should.equal('long_running')
   expect(e[0].sent).to.be.undefined
   e[0].error.timedOut.should.be.true
@@ -248,7 +233,7 @@ pipes.module({
 .delay(10)
 .then(function(timeline) {
   timeline.events.length.should.equal(1)
-  timeline.unmet[0].channel.should.equal('long_running_success')
+  timeline.unmet[0].delivery.should.deep.equal(['long_running_success', true])
 })
 .done(function() {
   console.log("All is well.")
@@ -258,7 +243,7 @@ pipes.module({
 var executed = false
 pipes.module({
   routes: [{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'superlazy'
   }],
   transforms: [function superlazy(work) {
@@ -268,14 +253,13 @@ pipes.module({
 .runWorld({
   name: 'Handles timeouts',
   expectations: [{
-    channel: 'long_running_success',
-    message: true
+    delivery: [ 'long_running_success', true ]
   }]
 })
 .then(function(timeline) {
   executed = true
   var e = timeline.events
-  e[0].received.channel.should.equal('start')
+  e[0].received.should.deep.equal(['start', true])
   e[0].transform.name.should.equal('superlazy')
   expect(e[0].sent).to.be.undefined
   e[0].error.timedOut.should.be.true
@@ -288,13 +272,13 @@ pipes.module({
 
 pipes.module({
   routes: [{
-    channel: 'start',
+    delivery: ['start'],
     transform: 'this_transform_does_not_exist'
   }]
 }).runWorld({})
 .then(function(timeline) {
   var firstEvent = timeline.events[0]
-  firstEvent.received.channel.should.equal('start')
+  firstEvent.received.should.deep.equal([ 'start', true])
   firstEvent.transform.name.should.equal('this_transform_does_not_exist')
   firstEvent.error.notFound.should.equal.true
 
@@ -306,25 +290,17 @@ pipes.module({})
 .runWorld({
   name: 'Empty world',
   expectations: [{
-    channel: 'start',
-    message: true,
-    send: {
-      channel: 'test_channel',
-      message: 'test_message'
-    }
+    delivery: [ 'start', true ],
+    send: [ 'test_channel', 'test_message' ]
   },{
-    channel: 'test_channel',
-    message: 'test_message'
+    delivery: [ 'test_channel', 'test_message' ]
   }]
 }).then(function(timeline) {
   var events = timeline.events
-  events[0].received.channel.should.equal('start')
-  events[0].received.message.should.equal(true)
+  events[0].received.should.deep.equal([ 'start', true ])
   events[0].transform.name.should.equal('expect')
-  events[0].sent.channel.should.equal('test_channel')
-  events[0].sent.message.should.equal('test_message')
-  events[1].received.channel.should.equal('test_channel')
-  events[1].received.message.should.equal('test_message')
+  events[0].sent.should.deep.equal(['test_channel', 'test_message'])
+  events[1].received.should.deep.equal([ 'test_channel', 'test_message' ])
   events[1].transform.name.should.equal('expect')
 }).done(function() {
   console.log("All is well here.")
@@ -334,27 +310,19 @@ pipes.module({})
 pipes.module({}).runWorld({
   name: 'Test arrays in expectation comparisions',
   expectations: [{
-    channel: 'start',
-    message: true,
-    send: {
-      channel: 'test_channel',
-      message: [ { property: 1 }, 2  ]
-    }
+    delivery: [ 'start', true ],
+    send: ['test_channel', [ { property: 1 }, 2  ] ]
   },{
-    channel: 'test_channel',
-    message: [ { property: 1 }, 2 ],
-    send: {
-      channel: 'success',
-      message: true
-    }
+    delivery: [ 'test_channel', [ { property: 1 }, 2 ] ],
+    send: ['success', true ]
   }]
 }).then(function(timeline) {
   timeline.unmet.length.should.equal(0)
   var e = timeline.events
-  e[0].sent.channel.should.equal('test_channel')
-  e[1].received.channel.should.equal('test_channel')
+  e[0].sent.should.deep.equal(['test_channel', [ { property: 1 }, 2  ] ])
+  e[1].received.should.deep.equal(['test_channel', [ { property: 1 }, 2  ] ])
   e[1].transform.name.should.equal('expect')
-  e[1].sent.channel.should.equal('success')
+  e[1].sent.should.deep.equal(['success', true])
 
 }).done(function() {
   console.log("all is well")
@@ -363,24 +331,17 @@ pipes.module({}).runWorld({
 pipes.module({}).runWorld({
   name: 'Test array ORDER in expectation comparisions',
   expectations: [{
-    channel: 'start',
-    message: true,
-    send: {
-      channel: 'test_channel',
-      message: [ { property: 1 }, 2  ]
-    }
+    delivery: [ 'start', true ],
+    send: [ 'test_channel', [ { property: 1 }, 2 ] ]
   },{
-    channel: 'test_channel',
-    message: [ 2, { property: 1 }], // Should fail!
-    send: {
-      channel: 'success',
-      message: true
-    }
+    delivery: [ 'test_channel', [ 2, { property: 1 }] ], // Should fail!
+    send: [ 'success', true ]
   }]
 }).then(function(timeline) {
   timeline.events.length.should.equal(1)
+  timeline.unmet[0].delivery[0].should.equal('test_channel')
   timeline.unmet.length.should.equal(1)
-  timeline.unmet[0].channel.should.equal('test_channel')
+
 
 }).done(function() {
   console.log("all is well")

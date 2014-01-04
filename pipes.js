@@ -8,31 +8,31 @@ var partial = require('mout/function/partial')
 var nodeDeepEqual = require('deep-equal')
 var teaMerge = require('tea-merge');
 var deepClone = require('mout/lang/deepClone')
-
-function findTransformByName(module, transformName) {
-  return find(module.transforms, function(t) {
-    return t.name === transformName
+var toArray = require('mout/lang/toArray')
+var isArray = require('mout/lang/isArray')
+var compose = require('mout/function/compose')
+var prop = require('mout/function/prop')
+// Cannot user mouts property filters because name on functions
+// is a special property somehow and mout doesnt support
+function findByNameProperty(array, name) {
+  return find(array, function(t) {
+    return t.name === name
   })
 }
 
-function sendUntilDone(module, expectations, channel, message, context) {
+function sendUntilDone(module, expectations, delivery, context) {
 
   context = context || { events: [], deliveries: [] }
-
-  context.deliveries.push({
-    channel: channel,
-    message: message
-  })
+  context.deliveries.push(delivery)
 
   // Create expect transforms for expectations on this channel
   // and add them to the receivers
   var receivers = filter(expectations, function(expectation) {
-    return expectation.channel === channel &&
-           nodeDeepEqual(expectation.message, message)
+    return nodeDeepEqual(expectation.delivery, delivery)
   }).map(function(expectation) {
     return function expect(work) {
       if (expectation.send)
-        work.done(expectation.send.channel, expectation.send.message)
+        work.done(expectation.send)
       else
         work.done('ok', true)
     }
@@ -40,26 +40,20 @@ function sendUntilDone(module, expectations, channel, message, context) {
 
   // Implicitly route messages sent to channels with the exact
   // same name as a transform.
-  var implicitTransform = findTransformByName(module, channel)
-  if (implicitTransform)
-    receivers.push(implicitTransform)
+  var implicitTransform = findByNameProperty(module.transforms, delivery[0])
+  if (implicitTransform) receivers.push(implicitTransform)
 
   // Finally, add the explicitly routed transforms for execution.
   var routesOnChannel =
-  filter(module.routes, { channel: channel }).forEach(function(route) {
-    var transform = findTransformByName(module, route.transform)
+  filter(module.routes, function(route) {
+    return route.delivery[0] === delivery[0]
+  }).forEach(function(route) {
+    var transform = findByNameProperty(module.transforms, route.transform)
     if (!transform) {
       context.events.push({
-        received: {
-          channel: channel,
-          message: message
-        },
-        transform: {
-          name: route.transform
-        },
-        error: {
-          notFound: true
-        }
+        received: delivery,
+        transform: { name: route.transform },
+        error: { notFound: true }
       })
     } else {
       receivers.push(transform)
@@ -78,16 +72,9 @@ function sendUntilDone(module, expectations, channel, message, context) {
     timeoutHandle = setTimeout(function() {
       timedOut = true
       context.events.push({
-        received: {
-          channel: channel,
-          message: message
-        },
-        transform: {
-          name: transform.name
-        },
-        error: {
-          timedOut: true
-        }
+        received: delivery,
+        transform: { name: transform.name },
+        error: { timedOut: true }
       })
       transformComplete.resolve(context.events)
     }, 2000)
@@ -95,8 +82,9 @@ function sendUntilDone(module, expectations, channel, message, context) {
     // Create the work object that we're going to send into
     // the transform.
     var work = {
-      message: message,
-      done: function(sendChannel, sendMessage) {
+      message: delivery[1],
+      done: function() {
+        var transformDelivery = isArray(arguments[0]) ? arguments[0] : toArray(arguments)
         if(timedOut) {
           // Transform has already timed out, don't
           // create an event from whatever comes back.
@@ -106,23 +94,14 @@ function sendUntilDone(module, expectations, channel, message, context) {
         clearTimeout(timeoutHandle)
 
         context.events.push({
-          received: {
-            channel: channel,
-            message: message
-          },
-          transform: {
-            name: transform.name
-          },
-          sent: {
-            channel: sendChannel,
-            message: sendMessage
-          }
+          received: delivery,
+          transform: { name: transform.name },
+          sent: transformDelivery
         })
-        sendUntilDone(module, expectations, sendChannel, sendMessage, context)
+        sendUntilDone(module, expectations, transformDelivery, context)
           .then(transformComplete.resolve)
       }
     }
-
     transform(work)
   })
   return Q.all(transformPromises).then(function() { return context })
@@ -131,34 +110,20 @@ function sendUntilDone(module, expectations, channel, message, context) {
 }
 
 function runWorld(module, world) {
-  return sendUntilDone(module, world.expectations, 'start', true).then(function(context) {
+  return sendUntilDone(module, world.expectations, ['start', true]).then(function(context) {
 
-
-    var handledDeliveries = pluck(context.events, 'received')
-
-    // FIXME: This is a bit primitive and will probably be messed up
-    // if we start having multiple expectations on same channel + message,
-    // i.e like expecting first and second and so forth.
-    var unmetExpectations = reject(world.expectations, function(expectation) {
-      return !!find(handledDeliveries, function(handled) {
-        return nodeDeepEqual(handled, {
-          channel: expectation.channel,
-          message: expectation.message
-        })
-      })
-    })
-
-    var unHandledDeliveries = reject(context.deliveries, function(sent) {
-      return !!find(handledDeliveries, function(handled) {
-        return nodeDeepEqual(handled, sent)
-      })
-    })
+    function isHandled(delivery) {
+      return !!find(pluck(context.events, 'received'), partial(nodeDeepEqual, delivery))
+    }
 
     return {
       world: { name: world.name },
       events: context.events,
-      unmet: unmetExpectations,
-      unhandled: unHandledDeliveries
+      // FIXME: Finding unmet expectations this way is a bit primitive and
+      // will probably be messed up if we start having multiple expectations
+      // on same channel + message, i.e like expecting first and second and so forth.
+      unmet: reject(world.expectations, compose(isHandled, prop('delivery'))),
+      unhandled: reject(context.deliveries, isHandled)
     }
   })
 }
