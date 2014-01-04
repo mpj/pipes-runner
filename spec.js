@@ -242,7 +242,7 @@ pipes.module({
   e[0].received.channel.should.equal('start')
   e[0].transform.name.should.equal('long_running')
   expect(e[0].sent).to.be.undefined
-  e[0].transform.timedOut.should.be.true
+  e[0].error.timedOut.should.be.true
   return timeline
 })
 .delay(10)
@@ -278,7 +278,7 @@ pipes.module({
   e[0].received.channel.should.equal('start')
   e[0].transform.name.should.equal('superlazy')
   expect(e[0].sent).to.be.undefined
-  e[0].transform.timedOut.should.be.true
+  e[0].error.timedOut.should.be.true
 })
 .timeout(2100)
 .done(function() {

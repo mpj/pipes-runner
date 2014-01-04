@@ -109,7 +109,9 @@ function sendUntilDone(module, expectations, channel, message, context) {
           message: message
         },
         transform: {
-          name: transform.name,
+          name: transform.name
+        },
+        error: {
           timedOut: true
         }
       })
