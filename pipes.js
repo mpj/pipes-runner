@@ -18,7 +18,6 @@ function findTransformByName(module, transformName) {
 
 function sendUntilDone(module, expectations, channel, message, context) {
 
-
   context = context || { events: [], deliveries: [] }
 
   context.deliveries.push({
@@ -26,27 +25,22 @@ function sendUntilDone(module, expectations, channel, message, context) {
     message: message
   })
 
-  var receivers = [];
-
-  // 1. Expectations always have first dibs on messages sent
-  // to channels, and will subvert any other routes
-  // TODO: multiple
-  var expectationsOnChannel = filter(expectations, { channel: channel })
-
-  filter(expectations, function(expectation) {
+  // Create expect transforms for expectations on this channel
+  // and add them to the receivers
+  var receivers = filter(expectations, function(expectation) {
     return expectation.channel === channel &&
            nodeDeepEqual(expectation.message, message)
-  }).forEach(function(match) {
-    receivers.push(function expect(work) {
-      if (match.send)
-        work.done(match.send.channel, match.send.message)
+  }).map(function(expectation) {
+    return function expect(work) {
+      if (expectation.send)
+        work.done(expectation.send.channel, expectation.send.message)
       else
         work.done('ok', true)
-    })
+    }
   })
 
-  // 2. Try implicit routing if the channel name
-  // exactly matches transform name
+  // Implicitly route messages sent to channels with the exact
+  // same name as a transform.
   var implicitTransform = findTransformByName(module, channel)
   if (implicitTransform)
     receivers.push(implicitTransform)
