@@ -40,9 +40,9 @@ var pipes = require('./pipes')
 pipes.module({})
   .runWorld({ name: 'Empty world' })
   .then(function(timeline) {
-    timeline.events[0].received.channel.should.equal('start')
-    timeline.events[0].received.message.should.equal(true)
-    timeline.events[0].noRoute.should.equal(true)
+    timeline.events.length.should.equal(0)
+    timeline.unhandled[0].channel.should.equal('start')
+    timeline.unhandled[0].message.should.equal(true)
   }).done(function() {
     console.log("All is well.")
   })

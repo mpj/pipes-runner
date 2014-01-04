@@ -16,10 +16,15 @@ function findTransformByName(module, transformName) {
   })
 }
 
-function sendUntilDone(module, expectations, channel, message, events) {
+function sendUntilDone(module, expectations, channel, message, context) {
   var deferred = Q.defer()
 
-  var events = events || []
+  context = context || { events: [], deliveries: [] }
+
+  context.deliveries.push({
+    channel: channel,
+    message: message
+  })
 
   // 1. Expectations always have first dibs on messages sent
   // to channels, and will subvert any other routes
@@ -33,7 +38,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
       return nodeDeepEqual(expectation.message, message)
     })
     if (match) {
-      events.push({
+      context.events.push({
         received: {
           channel: channel,
           message: message
@@ -42,13 +47,13 @@ function sendUntilDone(module, expectations, channel, message, events) {
         sent: match.send
       })
       if(match.send) {
-        sendUntilDone(module, expectations, match.send.channel, match.send.message, events)
+        sendUntilDone(module, expectations, match.send.channel, match.send.message, context)
           .then(deferred.resolve)
       } else {
-        deferred.resolve(events)
+        deferred.resolve(context)
       }
     } else {
-      deferred.resolve(events)
+      deferred.resolve(context)
     }
 
 
@@ -68,7 +73,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
     routesOnChannel.forEach(function(route) {
       var transform = findTransformByName(module, route.transform)
       if (!transform) {
-        events.push({
+        context.events.push({
           received: {
             channel: channel,
             message: message
@@ -83,16 +88,6 @@ function sendUntilDone(module, expectations, channel, message, events) {
       }
     })
 
-    if (receivers.length === 0) {
-      events.push({
-        received: {
-          channel: channel,
-          message: message
-        },
-        noRoute: true
-      })
-    }
-
     var sendPromises = []
     receivers.forEach(function(transform) {
 
@@ -105,7 +100,7 @@ function sendUntilDone(module, expectations, channel, message, events) {
         done: function(sendChannel, sendMessage) {
           if(timedOut) return;
           clearTimeout(timeoutHandle)
-          events.push({
+          context.events.push({
             received: {
               channel: channel,
               message: message
@@ -118,13 +113,13 @@ function sendUntilDone(module, expectations, channel, message, events) {
               message: sendMessage
             }
           })
-          sendUntilDone(module, expectations, sendChannel, sendMessage, events)
+          sendUntilDone(module, expectations, sendChannel, sendMessage, context)
             .then(deferredSend.resolve)
         }
       }
       timeoutHandle = setTimeout(function() {
         timedOut = true
-        events.push({
+        context.events.push({
           received: {
             channel: channel,
             message: message
@@ -134,26 +129,36 @@ function sendUntilDone(module, expectations, channel, message, events) {
             timedOut: true
           }
         })
-        deferredSend.resolve(events)
+        deferredSend.resolve(context.events)
       }, 2000)
       transform(work)
     })
-    return Q.all(sendPromises).then(function() { return events })
+    return Q.all(sendPromises).then(function() { return context })
   }
 
   return deferred.promise
 }
 
 function runWorld(module, world) {
-  return sendUntilDone(module, world.expectations, 'start', true).then(function(events) {
+  return sendUntilDone(module, world.expectations, 'start', true).then(function(context) {
 
     var metExpectations =
-      pluck(filter(events, 'expectation'), 'expectation')
+      pluck(filter(context.events, 'expectation'), 'expectation')
+
+    var handledDeliveries =
+      pluck(context.events, 'received')
+
+    var unHandledDeliveries = reject(context.deliveries, function(sent) {
+      return !!find(handledDeliveries, function(handled) {
+        return nodeDeepEqual(handled, sent)
+      })
+    })
 
     return {
       world: { name: world.name },
-      events: events,
-      unmet: difference(world.expectations, metExpectations)
+      events: context.events,
+      unmet: difference(world.expectations, metExpectations),
+      unhandled: unHandledDeliveries
     }
   })
 }
