@@ -12,11 +12,15 @@ function timelineViewModel(timeline) {
   var items = events.map(function(e) {
     var item = { lines: [] }
 
-    if (e.transform && e.transform.timedOut)
+    if (e.transform && e.transform.timedOut) {
       item.lines.push({ key: 'sent', value: 'timed out', look: 'needsfixing'})
+    }
 
     if (e.sent)
       item.lines.push({ key: 'sent', value: e.sent.channel, _tooltip: e.sent.message })
+
+    if (e.transform)
+      item.lines.push({ key: 'transform', value: e.transform.name })
 
     if (e.noRoute)
       item.lines.push({ key: 'route', value: 'none', look: 'needsfixing'})
@@ -24,7 +28,7 @@ function timelineViewModel(timeline) {
     if (e.expectation)
       item.lines.push(
         { key: 'expected', value: e.received.channel, look: 'works',
-          _tooltip: e.received.message })
+          _tooltip: e.expectation.message })
     else
       item.lines.push({ key: 'received', value:  e.received.channel,
           _tooltip: e.received.message})
@@ -250,9 +254,16 @@ if (process.argv[2] === 'test') {
     "unmet": []
   })
 
+
+
   vm.items[0].lines[0].key.should.equal("sent")
   vm.items[0].lines[0].value.should.equal("timed out")
   vm.items[0].lines[0].look.should.equal("needsfixing")
+  vm.items[0].lines[1].key.should.equal('transform')
+  vm.items[0].lines[1].value.should.equal('add')
+  vm.items[0].lines[2].key.should.equal('received')
+  vm.items[0].lines[2].value.should.equal('add')
+
 
 
   vm = timelineViewModel({
@@ -311,6 +322,8 @@ if (process.argv[2] === 'test') {
   vm.items[0].lines[0].value.should.equal('add_success')
   vm.items[0].lines[0].look.should.equal('needsfixing')
   vm.items[0].lines[0].tooltip.should.equal(12)
+
+
 
 
   console.log("**** YAY! All tests ran fine.")
