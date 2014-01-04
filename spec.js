@@ -99,7 +99,7 @@ pipes.module(pipes.extend(addingModule, {
   // Success expectation
   e[2].received.channel.should.equal('add_success')
   e[2].received.message.result.should.equal(12)
-  e[2].expectation.message.result.should.equal(12)
+  e[2].transform.name.should.equal('expect')
 
 }).done(function() {
   console.log("All is well")
@@ -318,14 +318,14 @@ pipes.module({})
   }]
 }).then(function(timeline) {
   var events = timeline.events
-  events[0].expectation.channel.should.equal('start')
-  events[0].expectation.message.should.equal(true)
+  events[0].received.channel.should.equal('start')
+  events[0].received.message.should.equal(true)
+  events[0].transform.name.should.equal('expect')
   events[0].sent.channel.should.equal('test_channel')
   events[0].sent.message.should.equal('test_message')
   events[1].received.channel.should.equal('test_channel')
   events[1].received.message.should.equal('test_message')
-  events[1].expectation.channel.should.equal('test_channel')
-  events[1].expectation.message.should.equal('test_message')
+  events[1].transform.name.should.equal('expect')
 }).done(function() {
   console.log("All is well here.")
 })
@@ -353,7 +353,7 @@ pipes.module({}).runWorld({
   var e = timeline.events
   e[0].sent.channel.should.equal('test_channel')
   e[1].received.channel.should.equal('test_channel')
-  e[1].expectation.channel.should.equal('test_channel')
+  e[1].transform.name.should.equal('expect')
   e[1].sent.channel.should.equal('success')
 
 }).done(function() {
