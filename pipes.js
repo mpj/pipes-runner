@@ -8,7 +8,6 @@ var partial = require('mout/function/partial')
 var nodeDeepEqual = require('deep-equal')
 var teaMerge = require('tea-merge');
 var deepClone = require('mout/lang/deepClone')
-var difference = require('mout/array/difference')
 
 function findTransformByName(module, transformName) {
   return find(module.transforms, function(t) {
