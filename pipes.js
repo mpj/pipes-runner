@@ -57,7 +57,9 @@ function sendUntilDone(module, expectations, channel, message, context) {
           message: message
         },
         transform: {
-          name: route.transform,
+          name: route.transform
+        },
+        error: {
           notFound: true
         }
       })

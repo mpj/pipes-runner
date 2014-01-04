@@ -296,7 +296,7 @@ pipes.module({
   var firstEvent = timeline.events[0]
   firstEvent.received.channel.should.equal('start')
   firstEvent.transform.name.should.equal('this_transform_does_not_exist')
-  firstEvent.transform.notFound.should.equal.true
+  firstEvent.error.notFound.should.equal.true
 
 }).done(function() {
   console.log("All is well.")
